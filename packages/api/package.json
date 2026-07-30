@@ -21,9 +21,11 @@
     "format": "prettier --write src"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "latest",
     "@hono/node-server": "latest",
     "@monorepo/core": "workspace:*",
     "@monorepo/db": "workspace:*",
+    "better-auth": "latest",
     "hono": "latest"
   },
   "devDependencies": {

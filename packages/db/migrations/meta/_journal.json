@@ -43,6 +43,13 @@
       "when": 1785425671103,
       "tag": "0005_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785426707009,
+      "tag": "0006_outgoing_red_hulk",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,12 @@
 import { createDb, schools, withTenantContext } from '@monorepo/db';
 import { Hono } from 'hono';
+import { auth } from './auth';
 
 const app = new Hono();
+
+// better-auth handles its own routing under /api/auth/* (sign-up, sign-in,
+// sign-out, session, etc.) - see src/auth.ts for the adapter/config.
+app.on(['POST', 'GET'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
 // Runtime queries go through the restricted app_rw connection, which is
 // subject to the row-level security policies in

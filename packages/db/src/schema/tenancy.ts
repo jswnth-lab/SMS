@@ -12,6 +12,7 @@ import {
   membershipStatusEnum,
   schoolStatusEnum,
 } from './enums';
+import { authUser } from './auth';
 
 export const schools = pgTable('schools', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -33,6 +34,10 @@ export const users = pgTable('users', {
   nameAr: text('name_ar'),
   locale: text('locale').notNull().default('en'),
   avatarUrl: text('avatar_url'),
+  // Links this domain profile to its better-auth identity (packages/db/src/schema/auth.ts).
+  // Nullable: not every profile (e.g. a student with no portal access yet) has
+  // logged in / been provisioned an auth account.
+  authUserId: text('auth_user_id').unique().references(() => authUser.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
