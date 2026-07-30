@@ -35,6 +35,7 @@
     "postgres": "latest"
   },
   "devDependencies": {
+    "@faker-js/faker": "latest",
     "@types/node": "latest",
     "drizzle-kit": "latest",
     "tsx": "latest",
