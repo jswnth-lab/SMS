@@ -1,4 +1,5 @@
 import {
+  index,
   jsonb,
   pgTable,
   text,
@@ -56,5 +57,7 @@ export const schoolMemberships = pgTable(
       table.schoolId,
       table.role
     ),
+    schoolIdIdx: index('school_memberships_school_id_idx').on(table.schoolId),
+    userIdIdx: index('school_memberships_user_id_idx').on(table.userId),
   })
 );

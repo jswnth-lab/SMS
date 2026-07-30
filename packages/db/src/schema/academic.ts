@@ -1,6 +1,9 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   date,
+  index,
   integer,
   pgTable,
   text,
@@ -29,20 +32,41 @@ export const academicYears = pgTable(
       table.schoolId,
       table.name
     ),
+    schoolIdIdx: index('academic_years_school_id_idx').on(table.schoolId),
+    datesSane: check(
+      'academic_years_dates_sane',
+      sql`${table.endsOn} > ${table.startsOn}`
+    ),
   })
 );
 
-export const terms = pgTable('terms', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  academicYearId: uuid('academic_year_id')
-    .notNull()
-    .references(() => academicYears.id),
-  name: text('name').notNull(),
-  startsOn: date('starts_on').notNull(),
-  endsOn: date('ends_on').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const terms = pgTable(
+  'terms',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    schoolId: uuid('school_id')
+      .notNull()
+      .references(() => schools.id),
+    academicYearId: uuid('academic_year_id')
+      .notNull()
+      .references(() => academicYears.id),
+    name: text('name').notNull(),
+    startsOn: date('starts_on').notNull(),
+    endsOn: date('ends_on').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    schoolIdIdx: index('terms_school_id_idx').on(table.schoolId),
+    academicYearIdIdx: index('terms_academic_year_id_idx').on(
+      table.academicYearId
+    ),
+    datesSane: check(
+      'terms_dates_sane',
+      sql`${table.endsOn} > ${table.startsOn}`
+    ),
+  })
+);
 
 export const gradeLevels = pgTable(
   'grade_levels',
@@ -61,6 +85,7 @@ export const gradeLevels = pgTable(
       table.schoolId,
       table.name
     ),
+    schoolIdIdx: index('grade_levels_school_id_idx').on(table.schoolId),
   })
 );
 
@@ -68,6 +93,9 @@ export const sections = pgTable(
   'sections',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    schoolId: uuid('school_id')
+      .notNull()
+      .references(() => schools.id),
     gradeLevelId: uuid('grade_level_id')
       .notNull()
       .references(() => gradeLevels.id),
@@ -87,6 +115,16 @@ export const sections = pgTable(
       table.academicYearId,
       table.name
     ),
+    schoolIdIdx: index('sections_school_id_idx').on(table.schoolId),
+    gradeLevelIdIdx: index('sections_grade_level_id_idx').on(
+      table.gradeLevelId
+    ),
+    academicYearIdIdx: index('sections_academic_year_id_idx').on(
+      table.academicYearId
+    ),
+    homeroomTeacherMembershipIdIdx: index(
+      'sections_homeroom_teacher_membership_id_idx'
+    ).on(table.homeroomTeacherMembershipId),
   })
 );
 
@@ -108,5 +146,6 @@ export const subjects = pgTable(
       table.schoolId,
       table.code
     ),
+    schoolIdIdx: index('subjects_school_id_idx').on(table.schoolId),
   })
 );

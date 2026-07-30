@@ -1,6 +1,9 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   date,
+  index,
   jsonb,
   pgTable,
   text,
@@ -44,25 +47,42 @@ export const students = pgTable(
       table.schoolId,
       table.admissionNo
     ),
+    schoolIdIdx: index('students_school_id_idx').on(table.schoolId),
+    userIdIdx: index('students_user_id_idx').on(table.userId),
+    sectionIdIdx: index('students_section_id_idx').on(table.sectionId),
+    dobBeforeJoinedOn: check(
+      'students_dob_before_joined_on',
+      sql`${table.dob} < ${table.joinedOn}`
+    ),
   })
 );
 
-export const guardians = pgTable('guardians', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  schoolId: uuid('school_id')
-    .notNull()
-    .references(() => schools.id),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const guardians = pgTable(
+  'guardians',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    schoolId: uuid('school_id')
+      .notNull()
+      .references(() => schools.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    schoolIdIdx: index('guardians_school_id_idx').on(table.schoolId),
+    userIdIdx: index('guardians_user_id_idx').on(table.userId),
+  })
+);
 
 export const studentGuardians = pgTable(
   'student_guardians',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    schoolId: uuid('school_id')
+      .notNull()
+      .references(() => schools.id),
     studentId: uuid('student_id')
       .notNull()
       .references(() => students.id),
@@ -81,6 +101,13 @@ export const studentGuardians = pgTable(
       table.studentId,
       table.guardianId
     ),
+    schoolIdIdx: index('student_guardians_school_id_idx').on(table.schoolId),
+    studentIdIdx: index('student_guardians_student_id_idx').on(
+      table.studentId
+    ),
+    guardianIdIdx: index('student_guardians_guardian_id_idx').on(
+      table.guardianId
+    ),
   })
 );
 
@@ -88,6 +115,9 @@ export const teachingAssignments = pgTable(
   'teaching_assignments',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    schoolId: uuid('school_id')
+      .notNull()
+      .references(() => schools.id),
     teacherMembershipId: uuid('teacher_membership_id')
       .notNull()
       .references(() => schoolMemberships.id),
@@ -108,6 +138,21 @@ export const teachingAssignments = pgTable(
       table.teacherMembershipId,
       table.sectionId,
       table.subjectId,
+      table.academicYearId
+    ),
+    schoolIdIdx: index('teaching_assignments_school_id_idx').on(
+      table.schoolId
+    ),
+    teacherMembershipIdIdx: index(
+      'teaching_assignments_teacher_membership_id_idx'
+    ).on(table.teacherMembershipId),
+    sectionIdIdx: index('teaching_assignments_section_id_idx').on(
+      table.sectionId
+    ),
+    subjectIdIdx: index('teaching_assignments_subject_id_idx').on(
+      table.subjectId
+    ),
+    academicYearIdIdx: index('teaching_assignments_academic_year_id_idx').on(
       table.academicYearId
     ),
   })
