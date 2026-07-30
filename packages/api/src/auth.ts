@@ -1,6 +1,7 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { authAccount, authSession, authUser, authVerification, db } from '@monorepo/db';
 import { betterAuth } from 'better-auth';
+import { bearer, phoneNumber } from 'better-auth/plugins';
 
 // better-auth owns its own identity/session/credential tables (user,
 // session, account, verification - see packages/db/src/schema/auth.ts).
@@ -18,9 +19,31 @@ export const auth = betterAuth({
       verification: authVerification,
     },
   }),
+  // Email + password: POST /api/auth/sign-in/email
   emailAndPassword: {
     enabled: true,
   },
+  plugins: [
+    // Phone + password: POST /api/auth/sign-in/phone-number.
+    // sendOTP is only used for phone verification / password-reset flows
+    // (not required for a plain phone+password sign-in). No SMS provider is
+    // wired up yet, so this logs the code instead of sending it - swap this
+    // out for a real provider (Twilio, etc.) before this goes anywhere near
+    // production.
+    phoneNumber({
+      sendOTP: ({ phoneNumber: to, code }) => {
+        console.log(`[dev] OTP for ${to}: ${code}`);
+      },
+    }),
+    // Session strategy: better-auth's default is a cookie
+    // (better-auth.session_token, HttpOnly), which is what the web app uses
+    // out of the box. The bearer plugin additionally accepts
+    // `Authorization: Bearer <token>` and resolves it to the same session
+    // server-side - that's the mechanism the mobile app will use later,
+    // since a native client has no cookie jar. Both work simultaneously;
+    // nothing else needs to change when mobile starts calling this API.
+    bearer(),
+  ],
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
 });

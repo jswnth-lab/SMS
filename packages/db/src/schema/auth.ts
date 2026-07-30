@@ -18,6 +18,9 @@ export const authUser = pgTable('user', {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  // Added by the phone-number plugin (packages/api/src/auth.ts).
+  phoneNumber: text('phone_number').unique(),
+  phoneNumberVerified: boolean('phone_number_verified'),
 });
 
 export const authSession = pgTable(
