@@ -16,6 +16,19 @@
     },
     "type-check": {
       "outputs": []
+    },
+    "db:generate": {
+      "outputs": ["migrations/**"],
+      "cache": false
+    },
+    "db:migrate": {
+      "outputs": ["migrations/**"],
+      "cache": false
+    },
+    "db:seed": {
+      "outputs": [],
+      "cache": false,
+      "dependsOn": ["build"]
     }
   }
 }

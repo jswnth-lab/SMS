@@ -15,11 +15,13 @@
   "scripts": {
     "build": "tsc",
     "type-check": "tsc --noEmit",
-    "dev": "tsc --watch",
+    "dev": "node --watch dist/server.js",
+    "dev:build": "tsc && node dist/server.js",
     "lint": "eslint src",
     "format": "prettier --write src"
   },
   "dependencies": {
+    "@hono/node-server": "latest",
     "@monorepo/core": "workspace:*",
     "@monorepo/db": "workspace:*",
     "hono": "latest"

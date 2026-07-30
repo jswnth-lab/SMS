@@ -5,11 +5,18 @@
   "description": "Monorepo with pnpm and Turborepo",
   "scripts": {
     "dev": "turbo run dev",
+    "dev:api": "turbo run dev --filter=@monorepo/api",
+    "dev:web": "turbo run dev --filter=@monorepo/web",
     "build": "turbo run build",
     "lint": "turbo run lint && eslint .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "format": "prettier --write .",
-    "type-check": "turbo run type-check"
+    "type-check": "turbo run type-check",
+    "db:up": "docker-compose up -d",
+    "db:down": "docker-compose down",
+    "db:generate": "turbo run db:generate --filter=@monorepo/db",
+    "db:migrate": "turbo run db:migrate --filter=@monorepo/db",
+    "db:seed": "turbo run db:seed --filter=@monorepo/db"
   },
   "devDependencies": {
     "@eslint/js": "latest",
