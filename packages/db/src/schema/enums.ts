@@ -18,3 +18,18 @@ export const membershipStatusEnum = pgEnum('membership_status', [
   'active',
   'disabled',
 ]);
+
+export const genderEnum = pgEnum('gender', ['male', 'female']);
+
+export const studentStatusEnum = pgEnum('student_status', [
+  'active',
+  'left',
+  'graduated',
+]);
+
+export const guardianRelationEnum = pgEnum('guardian_relation', [
+  'father',
+  'mother',
+  'guardian',
+  'other',
+]);
