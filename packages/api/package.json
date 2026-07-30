@@ -15,7 +15,7 @@
   "scripts": {
     "build": "tsc",
     "type-check": "tsc --noEmit",
-    "dev": "node --watch dist/server.js",
+    "dev": "tsx watch src/server.ts",
     "dev:build": "tsc && node dist/server.js",
     "lint": "eslint src",
     "format": "prettier --write src"
@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "latest",
+    "tsx": "latest",
     "typescript": "latest"
   }
 }

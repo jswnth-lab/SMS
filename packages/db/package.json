@@ -28,7 +28,7 @@
     "format": "prettier --write src",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "node dist/seed.js"
+    "db:seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "drizzle-orm": "latest",
@@ -37,6 +37,7 @@
   "devDependencies": {
     "@types/node": "latest",
     "drizzle-kit": "latest",
+    "tsx": "latest",
     "typescript": "latest"
   }
 }

@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16
+
+    container_name: skl
+
+    environment:
+      POSTGRES_USER: skladmin
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: skldb
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    restart: unless-stopped
+
+volumes:
+  pgdata:
