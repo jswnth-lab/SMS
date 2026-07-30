@@ -1,8 +1,10 @@
+import { createDb, schools, withTenantContext } from '@monorepo/db';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { auth } from './auth';
 import inviteRoutes from './invites';
 import meRoutes from './me';
+import { tenantContext, type TenantEnv } from './middleware/tenant-context';
 
 const app = new Hono();
 
@@ -31,6 +33,35 @@ app.route('/', inviteRoutes);
 
 // GET /me: who am I, and which school(s)/role(s) do I belong to.
 app.route('/', meRoutes);
+
+// Every route mounted below this point runs with tenant context resolved:
+// { userId, schoolId, role, membershipId } attached to c via tenantContext().
+// This is the pattern future business routes (students, attendance, etc.)
+// should follow.
+const APP_DATABASE_URL =
+  process.env.APP_DATABASE_URL ??
+  'postgresql://app_rw:app_rw_dev_pass@localhost:5433/skldb';
+const { db: appDb } = createDb(APP_DATABASE_URL);
+
+const tenantRoutes = new Hono<TenantEnv>();
+tenantRoutes.use('*', tenantContext());
+
+// Demo route proving the middleware resolves context correctly AND that it
+// actually drives an RLS-scoped query (not just decoration) - real business
+// routes will look like this: read `tenant` off c, open the app_rw
+// connection, wrap the query in withTenantContext.
+tenantRoutes.get('/context', async (c) => {
+  const tenant = c.get('tenant');
+  // userId here must be the domain users.id (school_memberships.user_id),
+  // not the better-auth authUserId - that's what the schools/users RLS
+  // policies compare current_setting('app.user_id') against.
+  const visibleSchools = await withTenantContext(appDb, { schoolId: tenant.schoolId, userId: tenant.userId }, (tx) =>
+    tx.select().from(schools)
+  );
+  return c.json({ tenant, visibleSchools });
+});
+
+app.route('/', tenantRoutes);
 
 app.get('/', (c) => c.json({ message: 'Hello from API' }));
 
