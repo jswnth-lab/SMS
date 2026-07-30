@@ -33,3 +33,15 @@ export const guardianRelationEnum = pgEnum('guardian_relation', [
   'guardian',
   'other',
 ]);
+
+export const attendanceStatusEnum = pgEnum('attendance_status', [
+  'present',
+  'absent',
+  'late',
+  'excused',
+]);
+
+export const reportCardStatusEnum = pgEnum('report_card_status', [
+  'draft',
+  'published',
+]);
