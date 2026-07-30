@@ -8,6 +8,13 @@
       "when": 1785422232359,
       "tag": "0000_wandering_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785422989875,
+      "tag": "0001_curved_vertigo",
+      "breakpoints": true
     }
   ]
 }
