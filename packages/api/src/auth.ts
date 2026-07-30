@@ -19,9 +19,15 @@ export const auth = betterAuth({
       verification: authVerification,
     },
   }),
-  // Email + password: POST /api/auth/sign-in/email
+  // Email + password sign-IN stays open (POST /api/auth/sign-in/email);
+  // sign-UP is deliberately disabled. Registration is invite-only: an admin
+  // creates an invite (POST /invites), the invited person redeems it
+  // (POST /invites/:token/accept in invites.ts), which provisions the
+  // better-auth identity directly via Drizzle rather than through this
+  // route. There is no public account-creation path.
   emailAndPassword: {
     enabled: true,
+    disableSignUp: true,
   },
   plugins: [
     // Phone + password: POST /api/auth/sign-in/phone-number.
@@ -46,4 +52,5 @@ export const auth = betterAuth({
   ],
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
+  trustedOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:8081').split(','),
 });
