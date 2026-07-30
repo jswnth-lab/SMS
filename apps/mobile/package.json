@@ -1,0 +1,10 @@
+{
+  "name": "@monorepo/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Mobile application placeholder (Expo will be initialized later)",
+  "scripts": {
+    "dev": "echo 'Mobile app setup pending'",
+    "build": "echo 'Mobile app setup pending'"
+  }
+}

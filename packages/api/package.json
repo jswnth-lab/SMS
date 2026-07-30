@@ -1,0 +1,31 @@
+{
+  "name": "@monorepo/api",
+  "version": "0.0.1",
+  "private": true,
+  "description": "API layer with Hono",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "dev": "tsc --watch",
+    "lint": "eslint src",
+    "format": "prettier --write src"
+  },
+  "dependencies": {
+    "@monorepo/core": "workspace:*",
+    "@monorepo/db": "workspace:*",
+    "hono": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "latest"
+  }
+}

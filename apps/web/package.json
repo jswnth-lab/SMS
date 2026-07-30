@@ -1,0 +1,27 @@
+{
+  "name": "@monorepo/web",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Next.js web application",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint app",
+    "format": "prettier --write app",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@monorepo/core": "workspace:*",
+    "@monorepo/api": "workspace:*",
+    "react": "latest",
+    "react-dom": "latest",
+    "next": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
+  }
+}
