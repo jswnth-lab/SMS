@@ -16,7 +16,8 @@
     "db:down": "docker-compose down",
     "db:generate": "turbo run db:generate --filter=@monorepo/db",
     "db:migrate": "turbo run db:migrate --filter=@monorepo/db",
-    "db:seed": "turbo run db:seed --filter=@monorepo/db"
+    "db:seed": "turbo run db:seed --filter=@monorepo/db",
+    "db:rls-verify": "turbo run db:rls-verify --filter=@monorepo/db"
   },
   "devDependencies": {
     "@eslint/js": "latest",

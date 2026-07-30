@@ -28,7 +28,8 @@
     "format": "prettier --write src",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx src/seed.ts"
+    "db:seed": "tsx src/seed.ts",
+    "db:rls-verify": "tsx src/rls-verify.ts"
   },
   "dependencies": {
     "drizzle-orm": "latest",

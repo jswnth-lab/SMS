@@ -29,6 +29,11 @@
       "outputs": [],
       "cache": false,
       "dependsOn": ["build"]
+    },
+    "db:rls-verify": {
+      "outputs": [],
+      "cache": false,
+      "dependsOn": ["build"]
     }
   }
 }
