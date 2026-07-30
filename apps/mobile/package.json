@@ -1,10 +1,29 @@
 {
   "name": "@monorepo/mobile",
+  "description": "Mobile application (Expo)",
+  "license": "0BSD",
   "version": "0.0.1",
   "private": true,
-  "description": "Mobile application placeholder (Expo will be initialized later)",
+  "main": "index.ts",
+  "dependencies": {
+    "expo": "~57.0.9",
+    "expo-secure-store": "~15.0.7",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-web": "^0.21.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
   "scripts": {
-    "dev": "echo 'Mobile app setup pending'",
-    "build": "echo 'Mobile app setup pending'"
+    "dev": "expo start --web",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build": "echo 'no static build for Expo dev app yet'"
   }
 }
