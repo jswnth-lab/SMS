@@ -12,6 +12,7 @@
     "lint:fix": "eslint . --fix && prettier --write .",
     "format": "prettier --write .",
     "type-check": "turbo run type-check",
+    "test": "turbo run test",
     "db:up": "docker-compose up -d",
     "db:down": "docker-compose down",
     "db:generate": "turbo run db:generate --filter=@monorepo/db",

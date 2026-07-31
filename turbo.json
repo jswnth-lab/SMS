@@ -17,6 +17,11 @@
     "type-check": {
       "outputs": []
     },
+    "test": {
+      "outputs": [],
+      "cache": false,
+      "dependsOn": ["^build"]
+    },
     "db:generate": {
       "outputs": ["migrations/**"],
       "cache": false
