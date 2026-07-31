@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
     }
   },
   "main": "dist/index.js",
@@ -25,11 +29,13 @@
   "dependencies": {
     "@better-auth/drizzle-adapter": "latest",
     "@hono/node-server": "latest",
+    "@hono/zod-validator": "latest",
     "@monorepo/core": "workspace:*",
     "@monorepo/db": "workspace:*",
     "better-auth": "latest",
     "drizzle-orm": "latest",
-    "hono": "latest"
+    "hono": "latest",
+    "zod": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
