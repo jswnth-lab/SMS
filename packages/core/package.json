@@ -19,6 +19,10 @@
     "lint": "eslint src",
     "format": "prettier --write src"
   },
+  "dependencies": {
+    "@monorepo/db": "workspace:*",
+    "drizzle-orm": "latest"
+  },
   "devDependencies": {
     "@types/node": "latest",
     "typescript": "latest"
