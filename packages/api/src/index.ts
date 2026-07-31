@@ -17,6 +17,7 @@ import studentsRoutes from './routes/students';
 import subjectsRoutes from './routes/subjects';
 import teachingAssignmentsRoutes from './routes/teaching-assignments';
 import termsRoutes from './routes/terms';
+import timetableRoutes from './routes/timetable';
 
 // Every route mounted on tenantRoutes runs with tenant context resolved
 // ({ userId, schoolId, role, membershipId } attached to c via
@@ -40,6 +41,7 @@ const tenantRoutes = new Hono<TenantEnv>()
   // of getting an extra prefix.
   .route('/', guardiansRoutes)
   .route('/', importRoutes)
+  .route('/', timetableRoutes)
   // Demo route proving the middleware resolves context correctly AND that it
   // actually drives an RLS-scoped query (not just decoration).
   .get('/context', async (c) => {
