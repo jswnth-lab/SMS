@@ -306,6 +306,27 @@ describe('attendance routes', () => {
     expect(body.summary.presentRate).toBeCloseTo((2 / 3) * 100, 1);
   });
 
+  it("blocks a teacher not assigned to the student's section from reading their attendance history", async () => {
+    await asAdmin().request(
+      `/attendance/sections/${sectionId}/bulk`,
+      jsonReq('POST', { date: '2026-02-10', records: [{ studentId: studentAId, status: 'present' }] })
+    );
+
+    const blockedRes = await asUnassignedTeacher().request(`/attendance/students/${studentAId}/history`);
+    expect(blockedRes.status).toBe(403);
+
+    const allowedRes = await asAssignedTeacher().request(`/attendance/students/${studentAId}/history`);
+    expect(allowedRes.status).toBe(200);
+  });
+
+  it('rejects a non-admin requesting the whole-school report with 403', async () => {
+    const teacherRes = await asAssignedTeacher().request(`/attendance/school/report?date=2026-03-01`);
+    expect(teacherRes.status).toBe(403);
+
+    const adminRes = await asAdmin().request(`/attendance/school/report?date=2026-03-01`);
+    expect(adminRes.status).toBe(200);
+  });
+
   it('reports whole-school daily counts broken down by section', async () => {
     await asAdmin().request(
       `/attendance/sections/${sectionId}/bulk`,

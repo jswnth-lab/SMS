@@ -1,5 +1,5 @@
 import { zValidator } from '@hono/zod-validator';
-import { canAccessSection, ForbiddenError } from '@monorepo/core';
+import { canAccessSection, canAccessStudent, ForbiddenError, requireRole } from '@monorepo/core';
 import { attendanceRecords, sections, students, withTenantContext } from '@monorepo/db';
 import { and, asc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { Hono } from 'hono';
@@ -205,9 +205,12 @@ const attendanceRoutes = new Hono<TenantEnv>()
 
     return c.json({ date, sectionId, ...report });
   })
-  // Whole-school daily counts, broken down per section.
+  // Whole-school daily counts, broken down per section - a school-wide
+  // aggregate, so admin-only (unlike the per-section endpoints, which a
+  // teacher can also reach for sections they're assigned to).
   .get('/attendance/school/report', zValidator('query', reportQuery), async (c) => {
     const tenant = c.get('tenant');
+    requireRole('admin')(tenant);
     const { date } = c.req.valid('query');
     const { schoolId, userId } = tenant;
 
@@ -240,13 +243,22 @@ const attendanceRoutes = new Hono<TenantEnv>()
   })
   // One student's attendance history in a date range, plus a summary
   // (counts by status and a present-rate percentage) over that range.
+  // Without a check here, any authenticated member of the school (any
+  // role) could read any other student's attendance by guessing/enumerating
+  // studentId - canAccessStudent enforces the same per-role rules used
+  // everywhere else in the app (admin: same school; teacher: teaches the
+  // student's section; parent: verified non-revoked guardian link;
+  // student: self).
   .get('/attendance/students/:studentId/history', zValidator('param', studentIdParam), zValidator('query', historyQuery), async (c) => {
     const tenant = c.get('tenant');
     const { studentId } = c.req.valid('param');
     const { from, to } = c.req.valid('query');
     const { schoolId, userId } = tenant;
 
-    const records = await withTenantContext(appDb, { schoolId, userId }, (tx) => {
+    const records = await withTenantContext(appDb, { schoolId, userId }, async (tx) => {
+      const allowed = await canAccessStudent(tenant, studentId, tx);
+      if (!allowed) throw new ForbiddenError('Not allowed to view this student’s attendance');
+
       const conditions = [eq(attendanceRecords.studentId, studentId), eq(attendanceRecords.schoolId, schoolId)];
       if (from) conditions.push(gte(attendanceRecords.date, from));
       if (to) conditions.push(lte(attendanceRecords.date, to));
