@@ -5,7 +5,7 @@ import { and, asc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { appDb } from '../db';
-import { notifyGuardiansOfAbsence } from '../lib/notifications';
+import { enqueueJob } from '../lib/jobs';
 import type { TenantContext, TenantEnv } from '../middleware/tenant-context';
 
 const sectionIdParam = z.object({ sectionId: z.string().uuid() });
@@ -131,7 +131,7 @@ const attendanceRoutes = new Hono<TenantEnv>()
 
     if ('error' in result) return c.json({ error: result.error }, 400);
     for (const absence of result.newAbsences) {
-      await notifyGuardiansOfAbsence({ schoolId, ...absence });
+      await enqueueJob(schoolId, 'notify.absence', { studentId: absence.studentId, attendanceRecordId: absence.attendanceRecordId, date: absence.date });
     }
     return c.json(result.saved);
   })

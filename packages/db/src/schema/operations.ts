@@ -17,6 +17,8 @@ import {
 import { sections, subjects, terms } from './academic';
 import {
   attendanceStatusEnum,
+  jobStatusEnum,
+  jobTypeEnum,
   reportCardStatusEnum,
 } from './enums';
 import { schoolMemberships, schools, users } from './tenancy';
@@ -306,6 +308,34 @@ export const notifications = pgTable(
   (table) => ({
     schoolIdIdx: index('notifications_school_id_idx').on(table.schoolId),
     userIdIdx: index('notifications_user_id_idx').on(table.userId),
+  })
+);
+
+export const jobs = pgTable(
+  'jobs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    schoolId: uuid('school_id')
+      .notNull()
+      .references(() => schools.id),
+    type: jobTypeEnum('type').notNull(),
+    status: jobStatusEnum('status').notNull().default('pending'),
+    payload: jsonb('payload').notNull().default({}),
+    result: jsonb('result'),
+    error: text('error'),
+    attempts: integer('attempts').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(3),
+    nextRetryAt: timestamp('next_retry_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+  },
+  (table) => ({
+    schoolIdIdx: index('jobs_school_id_idx').on(table.schoolId),
+    typeIdx: index('jobs_type_idx').on(table.type),
+    statusIdx: index('jobs_status_idx').on(table.status),
+    nextRetryAtIdx: index('jobs_next_retry_at_idx').on(table.nextRetryAt),
+    statusNextRetryIdx: index('jobs_status_next_retry_idx').on(table.status, table.nextRetryAt),
   })
 );
 

@@ -71,6 +71,20 @@
       "when": 1785503020348,
       "tag": "0009_clear_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785507494631,
+      "tag": "0010_needy_bloodstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785507600000,
+      "tag": "0011_jobs_rls",
+      "breakpoints": true
     }
   ]
 }

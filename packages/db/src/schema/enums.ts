@@ -45,3 +45,18 @@ export const reportCardStatusEnum = pgEnum('report_card_status', [
   'draft',
   'published',
 ]);
+
+export const jobTypeEnum = pgEnum('job_type', [
+  'notify.absence',
+  'notify.announcement',
+  'pdf.report-card',
+  'import.students',
+]);
+
+export const jobStatusEnum = pgEnum('job_status', [
+  'pending',
+  'processing',
+  'completed',
+  'failed',
+  'cancelled',
+]);
