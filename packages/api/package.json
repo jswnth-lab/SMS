@@ -33,8 +33,10 @@
     "@monorepo/core": "workspace:*",
     "@monorepo/db": "workspace:*",
     "better-auth": "latest",
+    "csv-parse": "latest",
     "drizzle-orm": "latest",
     "hono": "latest",
+    "iconv-lite": "latest",
     "zod": "latest"
   },
   "devDependencies": {
