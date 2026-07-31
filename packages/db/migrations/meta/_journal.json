@@ -64,6 +64,13 @@
       "when": 1785428539321,
       "tag": "0008_steep_spitfire",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785503020348,
+      "tag": "0009_clear_golden_guardian",
+      "breakpoints": true
     }
   ]
 }

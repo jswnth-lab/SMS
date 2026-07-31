@@ -1,0 +1,1 @@
+ALTER TABLE "report_cards" ADD COLUMN "payload" jsonb DEFAULT '{}'::jsonb NOT NULL;

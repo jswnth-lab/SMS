@@ -3,3 +3,4 @@ export * from './types';
 export * from './permissions/require-role';
 export * from './permissions/can-access-student';
 export * from './permissions/can-access-section';
+export * from './grades/grade-calc';

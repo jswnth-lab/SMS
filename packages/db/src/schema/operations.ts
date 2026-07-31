@@ -180,6 +180,12 @@ export const reportCards = pgTable(
       .notNull()
       .references(() => terms.id),
     status: reportCardStatusEnum('status').notNull().default('draft'),
+    // The computed grades/subject-totals snapshot - frozen at compute time
+    // so publish never silently recomputes against marks that changed
+    // since the draft was reviewed. PDF rendering is a later stage; this
+    // is the JSON that a PDF (or the app UI) will eventually be generated
+    // from.
+    payload: jsonb('payload').notNull().default({}),
     pdfUrl: text('pdf_url'),
     publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
