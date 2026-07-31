@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { auth } from './auth';
 import inviteRoutes from './invites';
 import meRoutes from './me';
+import { auditLog } from './middleware/audit-log';
 import { tenantContext, type TenantEnv } from './middleware/tenant-context';
 
 const app = new Hono();
@@ -45,6 +46,9 @@ const { db: appDb } = createDb(APP_DATABASE_URL);
 
 const tenantRoutes = new Hono<TenantEnv>();
 tenantRoutes.use('*', tenantContext());
+// Every mutating request (POST/PUT/PATCH/DELETE) past this point writes an
+// audit_logs row - see middleware/audit-log.ts for the entity/entityId rules.
+tenantRoutes.use('*', auditLog());
 
 // Demo route proving the middleware resolves context correctly AND that it
 // actually drives an RLS-scoped query (not just decoration) - real business
