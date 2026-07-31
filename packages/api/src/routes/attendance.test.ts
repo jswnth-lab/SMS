@@ -5,9 +5,12 @@ import {
   auditLogs,
   db,
   gradeLevels,
+  guardians,
+  notifications,
   schoolMemberships,
   schools,
   sections,
+  studentGuardians,
   students,
   subjects,
   teachingAssignments,
@@ -16,7 +19,6 @@ import {
 import { eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { beforeEach, afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { getEnqueuedAbsenceNotifications } from '../lib/notifications';
 import { auditLog } from '../middleware/audit-log';
 import type { TenantContext, TenantEnv } from '../middleware/tenant-context';
 import attendanceRoutes from './attendance';
@@ -31,6 +33,7 @@ describe('attendance routes', () => {
   let studentAId: string;
   let studentBId: string;
   let teacherUserIds: string[];
+  let guardianUserId: string;
 
   function buildApp(tenant: TenantContext) {
     return new Hono<TenantEnv>()
@@ -147,14 +150,33 @@ describe('attendance routes', () => {
       .returning();
     studentAId = studentA.id;
     studentBId = studentB.id;
+
+    const [guardianUser] = await db
+      .insert(users)
+      .values({ phone: `+9003${suffix}`, passwordHash: 'x', nameEn: `Guardian ${suffix}` })
+      .returning();
+    guardianUserId = guardianUser.id;
+    teacherUserIds.push(guardianUserId); // swept in afterAll's users cleanup too
+    const [guardian] = await db.insert(guardians).values({ schoolId, userId: guardianUserId }).returning();
+    await db.insert(studentGuardians).values({
+      schoolId,
+      studentId: studentBId,
+      guardianId: guardian.id,
+      relation: 'mother',
+      verifiedAt: new Date(),
+    });
   });
 
   beforeEach(async () => {
     await db.delete(attendanceRecords).where(eq(attendanceRecords.schoolId, schoolId));
+    await db.delete(notifications).where(eq(notifications.schoolId, schoolId));
   });
 
   afterAll(async () => {
     await db.delete(auditLogs).where(eq(auditLogs.schoolId, schoolId));
+    await db.delete(notifications).where(eq(notifications.schoolId, schoolId));
+    await db.delete(studentGuardians).where(eq(studentGuardians.schoolId, schoolId));
+    await db.delete(guardians).where(eq(guardians.schoolId, schoolId));
     await db.delete(attendanceRecords).where(eq(attendanceRecords.schoolId, schoolId));
     await db.delete(teachingAssignments).where(eq(teachingAssignments.schoolId, schoolId));
     await db.delete(subjects).where(eq(subjects.schoolId, schoolId));
@@ -167,9 +189,7 @@ describe('attendance routes', () => {
     await db.delete(users).where(inArray(users.id, [adminUserId, ...teacherUserIds]));
   });
 
-  it('bulk marks attendance, enqueues a notification on new absences, and lists the roster with marks merged', async () => {
-    const before = getEnqueuedAbsenceNotifications().length;
-
+  it('bulk marks attendance, writes a real notification for the absent student\'s verified guardian, and lists the roster with marks merged', async () => {
     const res = await asAssignedTeacher().request(
       `/attendance/sections/${sectionId}/bulk`,
       jsonReq('POST', {
@@ -182,9 +202,18 @@ describe('attendance routes', () => {
     );
     expect(res.status).toBe(200);
 
-    const after = getEnqueuedAbsenceNotifications();
-    expect(after.length).toBe(before + 1);
-    expect(after[after.length - 1]).toMatchObject({ studentId: studentBId, date: '2026-01-05' });
+    const notificationRows = await db.select().from(notifications).where(eq(notifications.schoolId, schoolId));
+    expect(notificationRows).toHaveLength(1);
+    expect(notificationRows[0]).toMatchObject({
+      userId: guardianUserId,
+      type: 'attendance.absence',
+      payload: { studentId: studentBId, date: '2026-01-05' },
+    });
+    expect(notificationRows[0].readAt).toBeNull();
+
+    // studentA (present) has no notification, and has no guardian on file
+    // anyway - nothing to assert missing there beyond the length check
+    // above already proving only one row exists.
 
     const rosterRes = await asAssignedTeacher().request(`/attendance/sections/${sectionId}?date=2026-01-05`);
     const roster = (await rosterRes.json()) as {
@@ -206,30 +235,34 @@ describe('attendance routes', () => {
     expect(report).toMatchObject({ total: 2, marked: 0, unmarked: 2 });
   });
 
-  it('upserts on re-submission (updates, not duplicates) and does not re-enqueue a notification on update', async () => {
+  it('upserts on re-submission (updates, not duplicates) and does not fire a notification on update', async () => {
+    // studentB has the verified guardian - use them so a notification
+    // would fire on insert, letting this test prove the update path is the
+    // one that doesn't.
     await asAdmin().request(
       `/attendance/sections/${sectionId}/bulk`,
-      jsonReq('POST', { date: '2026-01-07', records: [{ studentId: studentAId, status: 'present' }] })
+      jsonReq('POST', { date: '2026-01-07', records: [{ studentId: studentBId, status: 'present' }] })
     );
-    const before = getEnqueuedAbsenceNotifications().length;
 
     // Correct it to absent - this is an UPDATE of the existing row, not a
     // fresh insert.
     const res = await asAdmin().request(
       `/attendance/sections/${sectionId}/bulk`,
-      jsonReq('POST', { date: '2026-01-07', records: [{ studentId: studentAId, status: 'absent' }] })
+      jsonReq('POST', { date: '2026-01-07', records: [{ studentId: studentBId, status: 'absent' }] })
     );
     expect(res.status).toBe(200);
 
     const rows = await db
       .select()
       .from(attendanceRecords)
-      .where(eq(attendanceRecords.studentId, studentAId));
+      .where(eq(attendanceRecords.studentId, studentBId));
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe('absent');
 
-    // No new notification for the update path.
-    expect(getEnqueuedAbsenceNotifications().length).toBe(before);
+    // No notification for the update path, even though the final status
+    // is absent.
+    const notificationRows = await db.select().from(notifications).where(eq(notifications.schoolId, schoolId));
+    expect(notificationRows).toHaveLength(0);
   });
 
   it('rejects marking attendance for a student not in the section with 400', async () => {

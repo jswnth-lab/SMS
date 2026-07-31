@@ -5,7 +5,7 @@ import { and, asc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { appDb } from '../db';
-import { enqueueAbsenceNotification } from '../lib/notifications';
+import { notifyGuardiansOfAbsence } from '../lib/notifications';
 import type { TenantContext, TenantEnv } from '../middleware/tenant-context';
 
 const sectionIdParam = z.object({ sectionId: z.string().uuid() });
@@ -76,6 +76,7 @@ const attendanceRoutes = new Hono<TenantEnv>()
       }
 
       const saved = [];
+      const newAbsences: { studentId: string; attendanceRecordId: string; date: string }[] = [];
       for (const record of records) {
         const periodCondition = periodNo == null ? isNull(attendanceRecords.periodNo) : eq(attendanceRecords.periodNo, periodNo);
         const [existing] = await tx
@@ -113,21 +114,25 @@ const attendanceRoutes = new Hono<TenantEnv>()
           // Only on a brand-new absent record, not on an update to an
           // existing one - matches "on absence insert" literally, so
           // correcting a typo from absent to present and back doesn't
-          // re-fire a notification each time.
+          // re-fire a notification each time. Collected here and sent
+          // after the transaction commits (see below), not from inside
+          // it - notifyGuardiansOfAbsence writes through a different
+          // connection (the DB owner, not app_rw - see lib/notifications.ts),
+          // so firing it before this transaction is known to have
+          // committed could notify guardians about an absence that then
+          // got rolled back by a later error in the same batch.
           if (inserted.status === 'absent') {
-            enqueueAbsenceNotification({
-              schoolId,
-              studentId: inserted.studentId,
-              attendanceRecordId: inserted.id,
-              date: inserted.date,
-            });
+            newAbsences.push({ studentId: inserted.studentId, attendanceRecordId: inserted.id, date: inserted.date });
           }
         }
       }
-      return { saved };
+      return { saved, newAbsences };
     });
 
     if ('error' in result) return c.json({ error: result.error }, 400);
+    for (const absence of result.newAbsences) {
+      await notifyGuardiansOfAbsence({ schoolId, ...absence });
+    }
     return c.json(result.saved);
   })
   // Roster for a section/date(+period) with any existing marks merged in -

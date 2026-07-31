@@ -1,24 +1,51 @@
-export interface AbsenceNotificationJob {
+import { db, guardians, notifications, studentGuardians } from '@monorepo/db';
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+
+export interface AbsenceEvent {
   schoolId: string;
   studentId: string;
   attendanceRecordId: string;
   date: string;
 }
 
-// Stub queue: no real job runner (BullMQ/pg-boss/etc.) exists yet, so this
-// just records the job in memory and logs it - enough for callers/tests to
-// observe that a brand-new absence record actually triggers a notification
-// attempt, without committing to a specific queue technology before one is
-// chosen. Swap the body of enqueueAbsenceNotification for a real enqueue
-// call when that infra exists; the call site in attendance.ts won't need to
-// change.
-const queue: AbsenceNotificationJob[] = [];
+/**
+ * Writes a real `notifications` row for every verified, non-revoked
+ * guardian of the student - delivery channels (SMS/push/email) come later;
+ * this stage is just "the event happened, so a notification exists for
+ * whoever should see it, and they can list/mark it read." A student with
+ * no guardians on file yet (or none verified) gets no rows - there's
+ * nobody to notify.
+ *
+ * Goes through the DB owner connection, not app_rw/RLS: resolving
+ * guardians requires joining through `users`, and the users RLS policy
+ * only lets app_rw see a user who is the caller or shares a school
+ * membership - guardians routinely have neither (same reasoning as
+ * guardians.ts and the guardians CSV import).
+ */
+export async function notifyGuardiansOfAbsence(event: AbsenceEvent) {
+  const guardianLinks = await db
+    .select({ guardianUserId: guardians.userId })
+    .from(studentGuardians)
+    .innerJoin(guardians, eq(guardians.id, studentGuardians.guardianId))
+    .where(
+      and(
+        eq(studentGuardians.studentId, event.studentId),
+        eq(studentGuardians.schoolId, event.schoolId),
+        isNotNull(studentGuardians.verifiedAt),
+        isNull(studentGuardians.revokedAt)
+      )
+    );
+  if (guardianLinks.length === 0) return [];
 
-export function enqueueAbsenceNotification(job: AbsenceNotificationJob): void {
-  queue.push(job);
-  console.log('[stub] enqueued absence notification', job);
-}
-
-export function getEnqueuedAbsenceNotifications(): readonly AbsenceNotificationJob[] {
-  return queue;
+  return db
+    .insert(notifications)
+    .values(
+      guardianLinks.map((link) => ({
+        userId: link.guardianUserId,
+        schoolId: event.schoolId,
+        type: 'attendance.absence',
+        payload: { studentId: event.studentId, date: event.date, attendanceRecordId: event.attendanceRecordId },
+      }))
+    )
+    .returning();
 }

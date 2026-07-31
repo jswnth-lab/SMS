@@ -9,12 +9,15 @@ import meRoutes from './me';
 import { auditLog } from './middleware/audit-log';
 import { tenantContext, type TenantEnv } from './middleware/tenant-context';
 import academicYearsRoutes from './routes/academic-years';
+import announcementsRoutes from './routes/announcements';
 import assessmentsRoutes from './routes/assessments';
 import attendanceRoutes from './routes/attendance';
 import gradeLevelsRoutes from './routes/grade-levels';
 import guardiansRoutes from './routes/guardians';
+import homeworkRoutes from './routes/homework';
 import importRoutes from './routes/import';
 import marksRoutes from './routes/marks';
+import notificationsRoutes from './routes/notifications-routes';
 import reportCardsRoutes from './routes/report-cards';
 import sectionsRoutes from './routes/sections';
 import studentsRoutes from './routes/students';
@@ -50,6 +53,9 @@ const tenantRoutes = new Hono<TenantEnv>()
   .route('/', assessmentsRoutes)
   .route('/', marksRoutes)
   .route('/', reportCardsRoutes)
+  .route('/', announcementsRoutes)
+  .route('/', homeworkRoutes)
+  .route('/', notificationsRoutes)
   // Demo route proving the middleware resolves context correctly AND that it
   // actually drives an RLS-scoped query (not just decoration).
   .get('/context', async (c) => {
