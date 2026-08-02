@@ -16,7 +16,9 @@
     "@monorepo/api": "workspace:*",
     "@tanstack/react-query": "latest",
     "better-auth": "latest",
+    "clsx": "latest",
     "hono": "latest",
+    "tailwind-merge": "latest",
     "react": "latest",
     "react-dom": "latest",
     "next": "latest"
