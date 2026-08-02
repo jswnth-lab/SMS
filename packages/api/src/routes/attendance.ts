@@ -131,7 +131,7 @@ const attendanceRoutes = new Hono<TenantEnv>()
 
     if ('error' in result) return c.json({ error: result.error }, 400);
     for (const absence of result.newAbsences) {
-      await enqueueJob(schoolId, 'notify.absence', { studentId: absence.studentId, attendanceRecordId: absence.attendanceRecordId, date: absence.date });
+      await enqueueJob(schoolId, 'notify.absence', { schoolId, studentId: absence.studentId, attendanceRecordId: absence.attendanceRecordId, date: absence.date });
     }
     return c.json(result.saved);
   })

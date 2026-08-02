@@ -15,6 +15,7 @@ import { and, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { appDb } from '../db';
+import { enqueueJob } from '../lib/jobs';
 import type { TenantContext, TenantEnv } from '../middleware/tenant-context';
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -167,6 +168,10 @@ const announcementsRoutes = new Hono<TenantEnv>()
         .returning();
       return inserted;
     });
+    // Enqueued after the transaction resolves so a rolled-back announcement
+    // never generates a notification job for it (same reasoning as the
+    // attendance absence notification in attendance.ts).
+    await enqueueJob(schoolId, 'notify.announcement', { announcementId: row.id });
     return c.json(row, 201);
   })
   .patch('/announcements/:id', zValidator('param', idParam), zValidator('json', updateSchema), async (c) => {

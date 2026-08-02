@@ -21,6 +21,8 @@
     "type-check": "tsc --noEmit",
     "dev": "tsx watch src/server.ts",
     "dev:build": "tsc && node dist/server.js",
+    "worker": "tsx watch src/worker.ts",
+    "worker:build": "tsc && node dist/worker.js",
     "lint": "eslint src",
     "format": "prettier --write src",
     "bootstrap-admin": "tsx src/scripts/bootstrap-admin.ts",

@@ -8,6 +8,7 @@ import {
   gradeLevels,
   guardians,
   homework,
+  jobs,
   notifications,
   schoolMemberships,
   schools,
@@ -18,7 +19,7 @@ import {
   teachingAssignments,
   users,
 } from '@monorepo/db';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import announcementsRoutes from './announcements';
@@ -155,6 +156,7 @@ describe('comms (announcements, homework, notifications)', () => {
 
   afterAll(async () => {
     await db.delete(auditLogs).where(eq(auditLogs.schoolId, schoolId));
+    await db.delete(jobs).where(eq(jobs.schoolId, schoolId));
     await db.delete(notifications).where(eq(notifications.schoolId, schoolId));
     await db.delete(announcementReads).where(eq(announcementReads.schoolId, schoolId));
     await db.delete(announcements).where(eq(announcements.schoolId, schoolId));
@@ -183,6 +185,16 @@ describe('comms (announcements, homework, notifications)', () => {
     );
     expect(schoolRes.status).toBe(201);
     schoolAnnouncementId = ((await schoolRes.json()) as { id: string }).id;
+
+    const enqueuedJobs = await db
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.schoolId, schoolId), eq(jobs.type, 'notify.announcement')));
+    expect(enqueuedJobs).toHaveLength(1);
+    expect(enqueuedJobs[0]).toMatchObject({
+      status: 'pending',
+      payload: { announcementId: schoolAnnouncementId },
+    });
 
     const sectionRes = await asTeacher().request(
       '/announcements',

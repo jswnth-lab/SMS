@@ -5,7 +5,7 @@ export type JobType = typeof jobTypeEnum.enumValues[number];
 export type JobStatus = typeof jobStatusEnum.enumValues[number];
 
 export interface JobPayload {
-  'notify.absence': { studentId: string; attendanceRecordId: string; date: string };
+  'notify.absence': { schoolId: string; studentId: string; attendanceRecordId: string; date: string };
   'notify.announcement': { announcementId: string };
   'pdf.report-card': { reportCardId: string };
   'import.students': { importFileUrl: string; sectionId: string };
