@@ -26,6 +26,7 @@
     "lint": "eslint src",
     "format": "prettier --write src",
     "bootstrap-admin": "tsx src/scripts/bootstrap-admin.ts",
+    "seed-demo-login": "tsx src/scripts/seed-demo-login.ts",
     "test": "vitest run"
   },
   "dependencies": {
