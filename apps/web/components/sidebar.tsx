@@ -19,11 +19,14 @@ interface NavItem {
 // report cards) stay out until their pages land, so this never 404s.
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Dashboard', roles: ['admin', 'teacher', 'parent', 'student'] },
+  { href: '/my-day', label: 'My Day', roles: ['teacher'] },
   { href: '/school-setup', label: 'School Setup', roles: ['admin'] },
   { href: '/students', label: 'Students', roles: ['admin', 'teacher'] },
   { href: '/staff', label: 'Staff & Invites', roles: ['admin'] },
   { href: '/teaching-assignments', label: 'Teaching Assignments', roles: ['admin'] },
   { href: '/timetable', label: 'Timetable', roles: ['admin', 'teacher'] },
+  { href: '/gradebook', label: 'Gradebook', roles: ['teacher'] },
+  { href: '/homework', label: 'Homework', roles: ['teacher'] },
   { href: '/announcements', label: 'Announcements', roles: ['admin', 'teacher', 'parent', 'student'] },
 ];
 

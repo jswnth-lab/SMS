@@ -95,7 +95,7 @@ export function useStaff() {
   });
 }
 
-export function useTeachingAssignments(filters?: { academicYearId?: string }) {
+export function useTeachingAssignments(filters?: { academicYearId?: string; teacherMembershipId?: string }) {
   const api = useApi();
   const { currentSchoolId } = useSchool();
   return useQuery({
@@ -106,5 +106,21 @@ export function useTeachingAssignments(filters?: { academicYearId?: string }) {
       return res.json();
     },
     enabled: !!currentSchoolId,
+  });
+}
+
+/** This teacher's own (sectionId, subjectId) assignments - drives every teacher-scoped screen's pickers. */
+export function useMyTeachingAssignments() {
+  const api = useApi();
+  const { currentSchoolId, currentMembership } = useSchool();
+  const teacherMembershipId = currentMembership?.membershipId;
+  return useQuery({
+    queryKey: ['teaching-assignments', currentSchoolId, { teacherMembershipId }],
+    queryFn: async () => {
+      const res = await api['teaching-assignments'].$get({ query: { teacherMembershipId } });
+      if (!res.ok) throw new Error('Failed to load teaching assignments');
+      return res.json();
+    },
+    enabled: !!currentSchoolId && !!teacherMembershipId,
   });
 }

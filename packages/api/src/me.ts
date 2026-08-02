@@ -23,6 +23,7 @@ const meRoutes = new Hono().get('/me', async (c) => {
   const memberships = profile
     ? await db
         .select({
+          membershipId: schoolMemberships.id,
           schoolId: schools.id,
           schoolName: schools.name,
           schoolSlug: schools.slug,

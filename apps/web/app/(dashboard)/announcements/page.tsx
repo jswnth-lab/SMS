@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Alert, Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select, Textarea } from '../../../components/ui';
-import { useGradeLevels, useSections } from '../../../lib/queries';
+import { useGradeLevels, useMyTeachingAssignments, useSections } from '../../../lib/queries';
 import { useSchool } from '../../../lib/school-context';
 import { useApi } from '../../../lib/use-api';
 
@@ -11,10 +11,18 @@ type Scope = 'school' | 'grade' | 'section';
 
 export default function AnnouncementsPage() {
   const api = useApi();
-  const { currentSchoolId } = useSchool();
+  const { currentSchoolId, currentMembership } = useSchool();
+  const isTeacher = currentMembership?.role === 'teacher';
   const queryClient = useQueryClient();
   const { data: gradeLevels } = useGradeLevels();
-  const { data: sections } = useSections();
+  const { data: allSections } = useSections();
+  const { data: myAssignments } = useMyTeachingAssignments();
+  const mySectionIds = new Set((myAssignments ?? []).map((a) => a.sectionId));
+  // Teachers can only post to sections they teach (assertCanCreateAnnouncement
+  // on the API rejects school/grade scope and unassigned sections for
+  // non-admins) - restrict the picker to match instead of letting a teacher
+  // pick an option the server will just 403 on.
+  const sections = isTeacher ? (allSections ?? []).filter((s) => mySectionIds.has(s.id)) : allSections;
 
   const { data: announcements, isLoading } = useQuery({
     queryKey: ['announcements', currentSchoolId],
@@ -28,7 +36,7 @@ export default function AnnouncementsPage() {
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [scope, setScope] = useState<Scope>('school');
+  const [scope, setScope] = useState<Scope>(isTeacher ? 'section' : 'school');
   const [gradeLevelId, setGradeLevelId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -97,9 +105,9 @@ export default function AnnouncementsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="ann-scope">Audience</Label>
-                <Select id="ann-scope" value={scope} onChange={(e) => setScope(e.target.value as Scope)}>
-                  <option value="school">Whole school</option>
-                  <option value="grade">Grade level</option>
+                <Select id="ann-scope" value={scope} onChange={(e) => setScope(e.target.value as Scope)} disabled={isTeacher}>
+                  {!isTeacher && <option value="school">Whole school</option>}
+                  {!isTeacher && <option value="grade">Grade level</option>}
                   <option value="section">Section</option>
                 </Select>
               </div>

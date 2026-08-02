@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { getApiClient } from './api';
 
 export interface Membership {
+  membershipId: string;
   schoolId: string;
   schoolName: string;
   schoolSlug: string;
