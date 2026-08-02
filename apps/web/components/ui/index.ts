@@ -7,3 +7,4 @@ export * from './label';
 export * from './select';
 export * from './spinner';
 export * from './table';
+export * from './textarea';

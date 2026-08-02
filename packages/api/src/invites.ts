@@ -54,11 +54,36 @@ const acceptInviteSchema = z.object({
 });
 
 const tokenParam = z.object({ token: z.string().min(1) });
+const listQuery = z.object({ schoolId: z.string().uuid() });
 
 // Chained (not `const r = new Hono(); r.post(...)`) so each route's type
 // flows into this module's export and from there into `AppType` in
 // index.ts - see index.ts's tenantRoutes / me.ts for the same reasoning.
 const inviteRoutes = new Hono()
+  // Admin-only: list pending invites for a school (the staff screen's
+  // "invited, not yet activated" rows). Not mounted under tenantRoutes -
+  // like the rest of this file, it runs before there's a resolved tenant
+  // context, so schoolId comes in as an explicit query param and
+  // requireAdminMembership does the same manual admin check every other
+  // route here does.
+  .get('/invites', zValidator('query', listQuery), async (c) => {
+    const { schoolId } = c.req.valid('query');
+    const adminMembership = await requireAdminMembership(c.req.raw.headers, schoolId);
+    if (!adminMembership) {
+      return c.json({ error: 'Admin session for this school is required' }, 403);
+    }
+    const rows = await db.select().from(invites).where(eq(invites.schoolId, schoolId));
+    return c.json(
+      rows.map((i) => ({
+        id: i.id,
+        phoneNumber: i.phoneNumber,
+        email: i.email,
+        role: i.role,
+        expiresAt: i.expiresAt,
+        acceptedAt: i.acceptedAt,
+      }))
+    );
+  })
   // Admin-only: create an invite. Registration is invite-only - there is no
   // public /sign-up route (see auth.ts, emailAndPassword.disableSignUp).
   .post('/invites', zValidator('json', createInviteSchema), async (c) => {

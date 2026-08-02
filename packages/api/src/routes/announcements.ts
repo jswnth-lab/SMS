@@ -222,6 +222,25 @@ const announcementsRoutes = new Hono<TenantEnv>()
     });
     if (!row) return c.json({ error: 'Not found' }, 404);
     return c.json({ status: 'ok' });
+  })
+  // Read count only, not a percentage: computing a denominator (how many
+  // people are actually in this announcement's audience) would mean
+  // re-deriving membership counts per grade/section scope, which isn't
+  // worth it for a simple "who's seen this" indicator in the composer.
+  .get('/announcements/:id/reads', zValidator('param', idParam), async (c) => {
+    const tenant = c.get('tenant');
+    const { id } = c.req.valid('param');
+    const { schoolId, userId } = tenant;
+
+    const readCount = await withTenantContext(appDb, { schoolId, userId }, async (tx) => {
+      const rows = await tx
+        .select({ userId: announcementReads.userId })
+        .from(announcementReads)
+        .where(and(eq(announcementReads.announcementId, id), eq(announcementReads.schoolId, schoolId)));
+      return rows.length;
+    });
+
+    return c.json({ announcementId: id, readCount });
   });
 
 export default announcementsRoutes;

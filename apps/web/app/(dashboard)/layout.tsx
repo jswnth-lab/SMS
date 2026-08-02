@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { Sidebar } from '../../components/sidebar';
 import { SchoolSwitcher } from '../../components/school-switcher';
+import { Button } from '../../components/ui';
 import { signOut } from '../../lib/auth-client';
 import { useSchool } from '../../lib/school-context';
 import { useRequireAuth } from '../../lib/use-require-auth';
@@ -12,27 +13,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { currentMembership, isLoading: schoolLoading } = useSchool();
 
   if (isPending || !session) {
-    return <p style={{ padding: 24 }}>Loading...</p>;
+    return <p className="p-6 text-sm text-slate-500">Loading...</p>;
   }
 
   if (schoolLoading) {
-    return <p style={{ padding: 24 }}>Loading school...</p>;
+    return <p className="p-6 text-sm text-slate-500">Loading school...</p>;
   }
 
   if (!currentMembership) {
-    return <p style={{ padding: 24 }}>No active school membership on this account.</p>;
+    return <p className="p-6 text-sm text-slate-500">No active school membership on this account.</p>;
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui' }}>
-      <aside style={{ padding: 16, borderRight: '1px solid #ddd', display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="flex min-h-screen">
+      <aside className="flex w-64 flex-col gap-6 border-r border-slate-200 bg-white p-4">
         <SchoolSwitcher />
         <Sidebar role={currentMembership.role} />
-        <button type="button" onClick={() => signOut()} style={{ marginTop: 'auto' }}>
+        <Button variant="secondary" size="sm" onClick={() => signOut()} className="mt-auto">
           Sign out
-        </button>
+        </Button>
       </aside>
-      <main style={{ flex: 1, padding: 24 }}>{children}</main>
+      <main className="flex-1 overflow-y-auto p-8">{children}</main>
     </div>
   );
 }
