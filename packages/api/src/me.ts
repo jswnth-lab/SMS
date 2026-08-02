@@ -7,9 +7,12 @@ import { auth } from './auth';
 // entire job is figuring out which school(s) the caller belongs to, so
 // there's no single school_id to set as tenant context yet - same
 // reasoning as auth.ts and invites.ts.
-const meRoutes = new Hono();
-
-meRoutes.get('/me', async (c) => {
+// Chained (not `const r = new Hono(); r.get(...)`) so the route's type
+// flows into this module's export - and from there into `AppType` in
+// index.ts, which is what makes the hc<AppType>() client see `.me` at all
+// instead of typing it `never` (see index.ts's tenantRoutes for the same
+// reasoning applied there).
+const meRoutes = new Hono().get('/me', async (c) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session) {
     return c.json({ error: 'Not authenticated' }, 401);

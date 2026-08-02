@@ -1,7 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { zValidator } from '@hono/zod-validator';
 import { db, invites, schoolMemberships, schools, users } from '@monorepo/db';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { auth } from './auth';
 import { provisionAuthUser } from './auth-provisioning';
 
@@ -38,130 +40,139 @@ async function requireAdminMembership(headers: Headers, schoolId: string) {
   return membership ?? null;
 }
 
-const inviteRoutes = new Hono();
-
-// Admin-only: create an invite. Registration is invite-only - there is no
-// public /sign-up route (see auth.ts, emailAndPassword.disableSignUp).
-inviteRoutes.post('/invites', async (c) => {
-  const body = await c.req.json().catch(() => null);
-  const schoolId = body?.schoolId as string | undefined;
-  const phoneNumber = body?.phoneNumber as string | undefined;
-  const email = body?.email as string | undefined;
-  const role = body?.role as string | undefined;
-  if (!schoolId || !phoneNumber || !role) {
-    return c.json({ error: 'schoolId, phoneNumber, and role are required' }, 400);
-  }
-
-  const adminMembership = await requireAdminMembership(c.req.raw.headers, schoolId);
-  if (!adminMembership) {
-    return c.json({ error: 'Admin session for this school is required' }, 403);
-  }
-
-  const rawToken = randomBytes(32).toString('hex');
-  const tokenHash = hashToken(rawToken);
-  const expiresAt = new Date(Date.now() + ONE_WEEK_MS);
-
-  const [invite] = await db
-    .insert(invites)
-    .values({
-      schoolId,
-      phoneNumber,
-      email,
-      role: role as (typeof invites.$inferInsert)['role'],
-      invitedByMembershipId: adminMembership.id,
-      tokenHash,
-      expiresAt,
-    })
-    .returning();
-
-  // Dev convenience only: no SMS/email provider is wired up yet, so the raw
-  // token is logged and returned directly instead of being delivered out of
-  // band. Swap this for real delivery (and stop returning it in the
-  // response) before this goes anywhere near production.
-  console.log(`[dev] invite token for ${phoneNumber}: ${rawToken}`);
-
-  return c.json({ inviteId: invite.id, token: rawToken, expiresAt: invite.expiresAt });
+const createInviteSchema = z.object({
+  schoolId: z.string().uuid(),
+  phoneNumber: z.string().min(1),
+  email: z.string().email().optional(),
+  role: z.enum(['student', 'parent', 'teacher', 'admin']),
 });
 
-// Public: lets the "set your password" screen prefill who's being invited
-// without requiring auth - the token itself is the credential here.
-inviteRoutes.get('/invites/:token', async (c) => {
-  const tokenHash = hashToken(c.req.param('token'));
-  const [invite] = await db.select().from(invites).where(eq(invites.tokenHash, tokenHash));
-  if (!invite) return c.json({ error: 'Invite not found' }, 404);
-  if (invite.acceptedAt) return c.json({ error: 'Invite already accepted' }, 410);
-  if (invite.expiresAt < new Date()) return c.json({ error: 'Invite expired' }, 410);
-
-  const [school] = await db.select().from(schools).where(eq(schools.id, invite.schoolId));
-  return c.json({
-    phoneNumber: invite.phoneNumber,
-    email: invite.email,
-    role: invite.role,
-    schoolName: school?.name ?? null,
-  });
+const acceptInviteSchema = z.object({
+  password: z.string().min(8),
+  name: z.string().min(1),
+  nameAr: z.string().optional(),
 });
 
-// Public: the only way a new login can be created. Provisions the
-// better-auth identity directly (bypassing the locked-down /sign-up/email
-// route entirely) then creates-or-links the domain `users` profile and the
-// school_membership for the invited role.
-inviteRoutes.post('/invites/:token/accept', async (c) => {
-  const tokenHash = hashToken(c.req.param('token'));
-  const body = await c.req.json().catch(() => null);
-  const password = body?.password as string | undefined;
-  const name = body?.name as string | undefined;
-  const nameAr = body?.nameAr as string | undefined;
-  if (!password || !name) {
-    return c.json({ error: 'password and name are required' }, 400);
-  }
+const tokenParam = z.object({ token: z.string().min(1) });
 
-  const [invite] = await db.select().from(invites).where(eq(invites.tokenHash, tokenHash));
-  if (!invite) return c.json({ error: 'Invite not found' }, 404);
-  if (invite.acceptedAt) return c.json({ error: 'Invite already accepted' }, 410);
-  if (invite.expiresAt < new Date()) return c.json({ error: 'Invite expired' }, 410);
+// Chained (not `const r = new Hono(); r.post(...)`) so each route's type
+// flows into this module's export and from there into `AppType` in
+// index.ts - see index.ts's tenantRoutes / me.ts for the same reasoning.
+const inviteRoutes = new Hono()
+  // Admin-only: create an invite. Registration is invite-only - there is no
+  // public /sign-up route (see auth.ts, emailAndPassword.disableSignUp).
+  .post('/invites', zValidator('json', createInviteSchema), async (c) => {
+    const { schoolId, phoneNumber, email, role } = c.req.valid('json');
 
-  let [domainUser] = await db.select().from(users).where(eq(users.phone, invite.phoneNumber));
-  if (domainUser?.authUserId) {
-    return c.json({ error: 'This phone number already has an account' }, 409);
-  }
+    const adminMembership = await requireAdminMembership(c.req.raw.headers, schoolId);
+    if (!adminMembership) {
+      return c.json({ error: 'Admin session for this school is required' }, 403);
+    }
 
-  const authUserRow = await provisionAuthUser({
-    name,
-    email: invite.email ?? `${invite.phoneNumber.replace(/\D/g, '')}@placeholder.invalid`,
-    password,
-    phoneNumber: invite.phoneNumber,
-  });
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + ONE_WEEK_MS);
 
-  if (domainUser) {
-    [domainUser] = await db
-      .update(users)
-      .set({ authUserId: authUserRow.id })
-      .where(eq(users.id, domainUser.id))
-      .returning();
-  } else {
-    [domainUser] = await db
-      .insert(users)
+    const [invite] = await db
+      .insert(invites)
       .values({
-        phone: invite.phoneNumber,
-        email: invite.email,
-        passwordHash: 'managed-by-better-auth',
-        nameEn: name,
-        nameAr,
-        authUserId: authUserRow.id,
+        schoolId,
+        phoneNumber,
+        email,
+        role,
+        invitedByMembershipId: adminMembership.id,
+        tokenHash,
+        expiresAt,
       })
       .returning();
-  }
 
-  await db.insert(schoolMemberships).values({
-    userId: domainUser.id,
-    schoolId: invite.schoolId,
-    role: invite.role,
-    status: 'active',
-  });
+    // Dev convenience only: no SMS/email provider is wired up yet, so the raw
+    // token is logged and returned directly instead of being delivered out of
+    // band. Swap this for real delivery (and stop returning it in the
+    // response) before this goes anywhere near production.
+    console.log(`[dev] invite token for ${phoneNumber}: ${rawToken}`);
 
-  await db.update(invites).set({ acceptedAt: new Date() }).where(eq(invites.id, invite.id));
+    return c.json({ inviteId: invite.id, token: rawToken, expiresAt: invite.expiresAt });
+  })
+  // Public: lets the "set your password" screen prefill who's being invited
+  // without requiring auth - the token itself is the credential here.
+  .get('/invites/:token', zValidator('param', tokenParam), async (c) => {
+    const { token } = c.req.valid('param');
+    const tokenHash = hashToken(token);
+    const [invite] = await db.select().from(invites).where(eq(invites.tokenHash, tokenHash));
+    if (!invite) return c.json({ error: 'Invite not found' }, 404);
+    if (invite.acceptedAt) return c.json({ error: 'Invite already accepted' }, 410);
+    if (invite.expiresAt < new Date()) return c.json({ error: 'Invite expired' }, 410);
 
-  return c.json({ status: 'ok' });
-});
+    const [school] = await db.select().from(schools).where(eq(schools.id, invite.schoolId));
+    return c.json({
+      phoneNumber: invite.phoneNumber,
+      email: invite.email,
+      role: invite.role,
+      schoolName: school?.name ?? null,
+    });
+  })
+  // Public: the only way a new login can be created. Provisions the
+  // better-auth identity directly (bypassing the locked-down /sign-up/email
+  // route entirely) then creates-or-links the domain `users` profile and the
+  // school_membership for the invited role.
+  .post(
+    '/invites/:token/accept',
+    zValidator('param', tokenParam),
+    zValidator('json', acceptInviteSchema),
+    async (c) => {
+      const { token } = c.req.valid('param');
+      const { password, name, nameAr } = c.req.valid('json');
+      const tokenHash = hashToken(token);
+
+      const [invite] = await db.select().from(invites).where(eq(invites.tokenHash, tokenHash));
+      if (!invite) return c.json({ error: 'Invite not found' }, 404);
+      if (invite.acceptedAt) return c.json({ error: 'Invite already accepted' }, 410);
+      if (invite.expiresAt < new Date()) return c.json({ error: 'Invite expired' }, 410);
+
+      let [domainUser] = await db.select().from(users).where(eq(users.phone, invite.phoneNumber));
+      if (domainUser?.authUserId) {
+        return c.json({ error: 'This phone number already has an account' }, 409);
+      }
+
+      const authUserRow = await provisionAuthUser({
+        name,
+        email: invite.email ?? `${invite.phoneNumber.replace(/\D/g, '')}@placeholder.invalid`,
+        password,
+        phoneNumber: invite.phoneNumber,
+      });
+
+      if (domainUser) {
+        [domainUser] = await db
+          .update(users)
+          .set({ authUserId: authUserRow.id })
+          .where(eq(users.id, domainUser.id))
+          .returning();
+      } else {
+        [domainUser] = await db
+          .insert(users)
+          .values({
+            phone: invite.phoneNumber,
+            email: invite.email,
+            passwordHash: 'managed-by-better-auth',
+            nameEn: name,
+            nameAr,
+            authUserId: authUserRow.id,
+          })
+          .returning();
+      }
+
+      await db.insert(schoolMemberships).values({
+        userId: domainUser.id,
+        schoolId: invite.schoolId,
+        role: invite.role,
+        status: 'active',
+      });
+
+      await db.update(invites).set({ acceptedAt: new Date() }).where(eq(invites.id, invite.id));
+
+      return c.json({ status: 'ok' });
+    }
+  );
 
 export default inviteRoutes;
